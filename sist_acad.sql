@@ -1,13 +1,6 @@
--- =========================================================================
--- ETAPA 1: CRIAR O BANCO DE DADOS
--- =========================================================================
 DROP DATABASE IF EXISTS db_sistema_academico;
 CREATE DATABASE db_sistema_academico;
 USE db_sistema_academico;
-
--- =========================================================================
--- ETAPA 2: CRIAR AS TABELAS (Blindadas contra duplicidade)
--- =========================================================================
 
 -- 1. Tabela de Cursos
 CREATE TABLE tb_curso (
@@ -75,10 +68,6 @@ CREATE TABLE tb_curso_disciplina (
     -- Nota: Se você tiver uma tabela 'tb_curso', pode colocar o FOREIGN KEY para id_curso aqui também!
 );
 
--- =========================================================================
--- ETAPA 3: CARGA INICIAL DE DADOS
--- =========================================================================
-
 -- Inserir os Cursos
 INSERT INTO tb_curso (nome_curso, campus, periodo) VALUES 
 ('Análise e Desenvolvimento de Sistemas', 'Tatuapé', 'Matutino'),
@@ -99,7 +88,7 @@ INSERT INTO tb_curso_disciplina (id_curso, id_disciplina) VALUES
 (1, 1), -- ADS tem POO
 (1, 3), -- ADS tem Bancos de Dados
 
--- Ciência da Computação TAMBÉM tem POO, além de Estrutura de Dados e Bancos
+-- Ciência da Computação tem POO, além de Estrutura de Dados e Bancos
 (2, 1), -- CC também tem POO! (Olha o compartilhamento aqui)
 (2, 2), -- CC tem Estrutura de Dados
 (2, 3), -- CC tem Bancos de Dados
