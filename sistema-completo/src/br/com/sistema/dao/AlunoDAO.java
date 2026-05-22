@@ -27,7 +27,14 @@ public class AlunoDAO {
             
             ps.setString(1, aluno.getRgm());
             ps.setString(2, aluno.getNome());
-            ps.setString(3, aluno.getDataNascimento()); 
+            String dataBr = aluno.getDataNascimento();
+            if (dataBr != null && dataBr.contains("/")) {
+                String[] partes = dataBr.split("/");
+                String dataSql = partes[2] + "-" + partes[1] + "-" + partes[0];
+                ps.setString(3, dataSql);
+            } else {
+                ps.setString(3, null);
+            }
             ps.setString(4, aluno.getCpf());
             ps.setString(5, aluno.getEmail());
             ps.setString(6, aluno.getEndereco());
@@ -183,7 +190,14 @@ public class AlunoDAO {
             ps = conn.prepareStatement(sql);
             
             ps.setString(1, aluno.getNome());
-            ps.setString(2, aluno.getDataNascimento()); 
+            String dataBr = aluno.getDataNascimento();
+            if (dataBr != null && dataBr.contains("/")) {
+                String[] partes = dataBr.split("/");
+                String dataSql = partes[2] + "-" + partes[1] + "-" + partes[0];
+                ps.setString(2, dataSql);
+            } else {
+                ps.setString(2, null);
+            }
             ps.setString(3, aluno.getCpf());
             ps.setString(4, aluno.getEmail());
             ps.setString(5, aluno.getEndereco());
