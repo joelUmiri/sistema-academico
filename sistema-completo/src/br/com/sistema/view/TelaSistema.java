@@ -70,6 +70,11 @@ public class TelaSistema extends JFrame {
     
     // --- CORREÇÃO 2: DECLARAÇÃO DO ITEM DE SALVAR NOTAS COMO ATRIBUTO ---
     private JMenuItem itemNotaSalvarMenu;
+    
+    private final String[] ESTADOS = {
+    	    "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", 
+    	    "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"
+    	};
 
     public TelaSistema() {
         setTitle("Sistema Acadêmico - UNICID");
@@ -147,57 +152,38 @@ public class TelaSistema extends JFrame {
      * Captura os dados da tela, valida e salva um novo aluno no banco de dados.
      */
     private void executarSalvar() {
+        // 1. Validação básica de campos vazios
         if (txtRgm.getText().trim().isEmpty() || txtNome.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "RGM e Nome são obrigatórios para realizar o cadastro!", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "RGM e Nome são obrigatórios!", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        // 2. NOVA VALIDAÇÃO: Impedir cadastro de RGM duplicado
+        try {
+            AlunoDAO daoVerifica = new AlunoDAO();
+            if (daoVerifica.buscarPorRgm(txtRgm.getText().trim()) != null) {
+                JOptionPane.showMessageDialog(this, "Erro: Este RGM já está cadastrado no sistema. Use o botão 'Alterar' para modificar os dados.", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao verificar RGM: " + e.getMessage());
+            return;
+        }
+
+        // 3. Se passou pela verificação, executa o salvar normal
         try {
             Aluno aluno = new Aluno();
-            aluno.setRgm(txtRgm.getText().trim());
-            aluno.setNome(txtNome.getText().trim());
+            // ... (seu código original de preencher o objeto aluno) ...
             
-            String dataBr = txtDataNascimento.getText().trim();
-            if (dataBr.length() == 10 && !dataBr.contains("_")) {
-                String[] partes = dataBr.split("/");
-                String dataMysql = partes[2] + "-" + partes[1] + "-" + partes[0];
-                aluno.setDataNascimento(dataMysql);
-            } else {
-                aluno.setDataNascimento(null);
-            }
-            
-            aluno.setCpf(txtCpf.getText().trim());
-            aluno.setEmail(txtEmail.getText().trim());
-            aluno.setEndereco(txtEndereco.getText().trim());
-            aluno.setMunicipio(txtMunicipio.getText().trim());
-            aluno.setUf(cbUf.getSelectedItem().toString());
-            aluno.setCelular(txtCelular.getText().trim());
-
-            String campusSelecionado = cbCampus.getSelectedItem().toString();
-            String periodoSelecionado = "";
-            if (rbMatutino.isSelected()) periodoSelecionado = "Matutino";
-            else if (rbVespertino.isSelected()) periodoSelecionado = "Vespertino";
-            else if (rbNoturno.isSelected()) periodoSelecionado = "Noturno";
-
-            int idCursoSelecionado = 3; 
-            String cursoTexto = cbCurso.getSelectedItem().toString();
-            if (cursoTexto.equals("Análise e Desenvolvimento de Sistemas")) {
-                idCursoSelecionado = 1;
-            } else if (cursoTexto.equals("Ciência da Computação")) {
-                idCursoSelecionado = 2;
-            }
-
             AlunoDAO dao = new AlunoDAO();
             dao.salvar(aluno);
-            dao.matricularAlunoNoCurso(aluno.getRgm(), idCursoSelecionado, campusSelecionado, periodoSelecionado);
-
-            JOptionPane.showMessageDialog(this, "Aluno cadastrado e matriculado no curso com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            // ... (seu código original de matricular) ...
             
+            JOptionPane.showMessageDialog(this, "Aluno cadastrado com sucesso!");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao salvar aluno/matrícula: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao salvar aluno: " + ex.getMessage());
         }
     }
-
     /**
      * Captura as informações da Aba 3 e envia para o banco de dados.
      */
@@ -310,7 +296,7 @@ public class TelaSistema extends JFrame {
         String semestre = semObj.toString();
 
         int resposta = JOptionPane.showConfirmDialog(this, 
-                "Tem certeza que deseja apagar o registo de notas/faltas da disciplina:\n" + disciplina + " (" + semestre + ")?", 
+                "Tem certeza que deseja apagar o registro de notas/faltas da disciplina:\n" + disciplina + " (" + semestre + ")?", 
                 "Confirmar Exclusão de Nota", 
                 JOptionPane.YES_NO_OPTION, 
                 JOptionPane.QUESTION_MESSAGE);
@@ -320,14 +306,19 @@ public class TelaSistema extends JFrame {
                 AlunoDAO dao = new AlunoDAO();
                 dao.excluirNotaEFaltas(rgm, disciplina, semestre);
 
-                // Reseta os campos para o padrão visual após apagar do banco
-                cbNotaValor.setSelectedIndex(0); // "0,0"
+                // --- RESET VISUAL (PARA JCOMBOBOX) ---
+                cbNotaValor.setSelectedIndex(0); // Volta para a primeira opção (ex: "0,0")
                 txtNotaFaltas.setText("0");
 
-                JOptionPane.showMessageDialog(this, "Registo de notas e faltas removido com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Registro removido com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                
+                // --- ATUALIZAÇÃO DO BOLETIM ---
+                // Como você manteve o Enum, ao chamar o gerarBoletimTexto, 
+                // ele deve ler o estado atual do banco (que agora está sem a nota)
+                gerarBoletimTexto(rgm, txtNotaNomeExibir.getText(), txtNotaCursoExibir.getText());
                 
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Erro ao excluir registo: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Erro ao excluir registro: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -506,53 +497,34 @@ public class TelaSistema extends JFrame {
      */
     private void executarAlterar() {
         if (txtRgm.getText().trim().isEmpty() || txtNome.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "RGM e Nome são obrigatórios para alterar o cadastro!", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "RGM e Nome são obrigatórios!", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        // 1. NOVA VALIDAÇÃO: Garantir que o aluno realmente existe no banco
+        try {
+            AlunoDAO daoVerifica = new AlunoDAO();
+            if (daoVerifica.buscarPorRgm(txtRgm.getText().trim()) == null) {
+                JOptionPane.showMessageDialog(this, "Erro: Aluno não encontrado. Não é possível alterar um registro que não existe.", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao verificar existência: " + e.getMessage());
+            return;
+        }
+
+        // 2. Se passou, executa o alterar normal
         try {
             Aluno aluno = new Aluno();
-            aluno.setRgm(txtRgm.getText().trim());
-            aluno.setNome(txtNome.getText().trim());
+            // ... (seu código original de preencher o aluno) ...
             
-            String dataBr = txtDataNascimento.getText().trim();
-            if (dataBr.length() == 10 && !dataBr.contains("_")) {
-                String[] partes = dataBr.split("/");
-                String dataMysql = partes[2] + "-" + partes[1] + "-" + partes[0];
-                aluno.setDataNascimento(dataMysql);
-            } else {
-                aluno.setDataNascimento(null);
-            }
-            
-            aluno.setCpf(txtCpf.getText().trim());
-            aluno.setEmail(txtEmail.getText().trim());
-            aluno.setEndereco(txtEndereco.getText().trim());
-            aluno.setMunicipio(txtMunicipio.getText().trim());
-            aluno.setUf(cbUf.getSelectedItem().toString());
-            aluno.setCelular(txtCelular.getText().trim());
-
-            String campusSelecionado = cbCampus.getSelectedItem().toString();
-            String periodoSelecionado = "";
-            if (rbMatutino.isSelected()) periodoSelecionado = "Matutino";
-            else if (rbVespertino.isSelected()) periodoSelecionado = "Vespertino";
-            else if (rbNoturno.isSelected()) periodoSelecionado = "Noturno";
-
-            int idCursoSelecionado = 3;
-            String cursoTexto = cbCurso.getSelectedItem().toString();
-            if (cursoTexto.equals("Análise e Desenvolvimento de Sistemas")) {
-                idCursoSelecionado = 1;
-            } else if (cursoTexto.equals("Ciência da Computação")) {
-                idCursoSelecionado = 2;
-            }
-
             AlunoDAO dao = new AlunoDAO();
-            dao.alterar(aluno); 
-            dao.matricularAlunoNoCurso(aluno.getRgm(), idCursoSelecionado, campusSelecionado, periodoSelecionado); 
-
-            JOptionPane.showMessageDialog(this, "Dados do aluno updated com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            dao.alterar(aluno);
+            // ... (seu código original de matricular) ...
             
+            JOptionPane.showMessageDialog(this, "Dados do aluno atualizados com sucesso!");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao alterar dados: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao alterar dados: " + ex.getMessage());
         }
     }
     
@@ -625,8 +597,12 @@ public class TelaSistema extends JFrame {
         txtEndereco = new JTextField(); txtEndereco.setBounds(65, 165, 590, 25); painelDadosPessoais.add(txtEndereco);
         JLabel lblMunicipio = new JLabel("Município"); lblMunicipio.setBounds(20, 210, 70, 25); painelDadosPessoais.add(lblMunicipio);
         txtMunicipio = new JTextField(); txtMunicipio.setBounds(90, 210, 170, 25); painelDadosPessoais.add(txtMunicipio);
+        
         JLabel lblUf = new JLabel("UF"); lblUf.setBounds(275, 210, 20, 25); painelDadosPessoais.add(lblUf);
-        String[] estados = {"SP", "RJ", "MG", "PR", "SC", "RS", "BA", "DF"}; cbUf = new JComboBox<>(estados); cbUf.setBounds(300, 210, 60, 25); painelDadosPessoais.add(cbUf);
+        cbUf = new JComboBox<>(ESTADOS);
+        cbUf.setBounds(300, 210, 60, 25); 
+        painelDadosPessoais.add(cbUf);
+        
         JLabel lblCelular = new JLabel("Celular"); lblCelular.setBounds(375, 210, 50, 25); painelDadosPessoais.add(lblCelular);
         txtCelular = new JFormattedTextField(mascaraCelular); txtCelular.setBounds(425, 210, 230, 25); painelDadosPessoais.add(txtCelular);
     }
